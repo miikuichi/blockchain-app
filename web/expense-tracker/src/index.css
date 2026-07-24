@@ -360,6 +360,53 @@ body {
   color: var(--gold-light);
 }
 
+.wallet-connect-section {
+  margin-top: 20px;
+}
+
+.wallet-connect-card {
+  border-color: var(--border-hover);
+}
+
+.wallet-connect-header {
+  margin-bottom: 12px;
+}
+
+.wallet-link-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wallet-link-note {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+}
+
+.wallet-link-error {
+  color: #ff8686;
+  font-size: 0.83rem;
+}
+
+.wallet-linked-state {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wallet-linked-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.wallet-linked-row {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
 .balance-fiat {
   font-size: 0.83rem;
   color: rgba(255, 255, 255, 0.45);

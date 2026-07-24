@@ -1,14 +1,32 @@
-import { Wallet, ArrowUpRight, ArrowDownLeft, RefreshCw, TrendingUp, Send } from 'lucide-react';
-import Card from '../components/ui/Card';
-import StatCard from '../components/ui/StatCard';
-import Button from '../components/ui/Button';
-import TransactionItem from '../components/transactions/TransactionItem';
+import {
+  Wallet,
+  ArrowUpRight,
+  ArrowDownLeft,
+  RefreshCw,
+  TrendingUp,
+  Send,
+} from "lucide-react";
+import Card from "../components/ui/Card";
+import StatCard from "../components/ui/StatCard";
+import Button from "../components/ui/Button";
+import TransactionItem from "../components/transactions/TransactionItem";
+import WalletConnectCard from "../components/wallet/WalletConnectCard";
 
 const STATS = [
-  { label: 'Total Sent',       value: '—', sub: 'Last 30 days', icon: ArrowUpRight },
-  { label: 'Total Received',   value: '—', sub: 'Last 30 days', icon: ArrowDownLeft },
-  { label: 'Pending',          value: '—', sub: '—',            icon: RefreshCw },
-  { label: 'Portfolio Change', value: '—', sub: 'vs last month', icon: TrendingUp },
+  { label: "Total Sent", value: "—", sub: "Last 30 days", icon: ArrowUpRight },
+  {
+    label: "Total Received",
+    value: "—",
+    sub: "Last 30 days",
+    icon: ArrowDownLeft,
+  },
+  { label: "Pending", value: "—", sub: "—", icon: RefreshCw },
+  {
+    label: "Portfolio Change",
+    value: "—",
+    sub: "vs last month",
+    icon: TrendingUp,
+  },
 ];
 
 const RECENT_TXS = [];
@@ -30,12 +48,15 @@ export default function Dashboard({ onNavigate }) {
               <span>Available Balance</span>
             </div>
             <div className="balance-amount">
-              —
-              <span className="balance-unit"> ₳</span>
+              —<span className="balance-unit"> ₳</span>
             </div>
           </div>
           <div className="balance-actions">
-            <Button variant="gold" icon={<Send size={15} />} onClick={() => onNavigate('send')}>
+            <Button
+              variant="gold"
+              icon={<Send size={15} />}
+              onClick={() => onNavigate("send")}
+            >
               Send
             </Button>
             <Button variant="ghost" icon={<ArrowDownLeft size={15} />}>
@@ -57,7 +78,10 @@ export default function Dashboard({ onNavigate }) {
       <Card>
         <div className="section-header">
           <span className="card-title">Recent Transactions</span>
-          <button className="link-btn" onClick={() => onNavigate('transactions')}>
+          <button
+            className="link-btn"
+            onClick={() => onNavigate("transactions")}
+          >
             View all
           </button>
         </div>
@@ -65,6 +89,10 @@ export default function Dashboard({ onNavigate }) {
           <TransactionItem key={tx.id} tx={tx} />
         ))}
       </Card>
+
+      <div className="wallet-connect-section">
+        <WalletConnectCard />
+      </div>
     </div>
   );
 }
