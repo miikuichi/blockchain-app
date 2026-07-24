@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
+import transactionRoutes from "./routes/transactionRoutes.js";
 
 import { initializeDatabase } from "./services/databaseService.js";
 
@@ -28,6 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/wallet", walletRoutes);
+app.use("/api/transactions", transactionRoutes);
 
 /*
 |--------------------------------------------------------------------------

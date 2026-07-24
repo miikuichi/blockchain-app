@@ -61,6 +61,19 @@ Notes:
 - Keep CARDANO_TARGET_NETWORK_ID at 0 while developing and testing.
 - Wallet linking will fail when wallet network does not match this value.
 
+## Environment Variables (Frontend)
+
+Create web/expense-tracker/.env with:
+
+```
+VITE_BLOCKFROST_PROJECT_ID=your_blockfrost_project_id
+```
+
+Notes:
+
+- The Send page uses Blockfrost through Lucid to build and submit ADA transactions.
+- Use a preprod Blockfrost project ID while developing against network ID 0.
+
 ## Install and Run
 
 ### 1) Backend
@@ -109,6 +122,13 @@ Frontend runs on the Vite local URL (usually http://localhost:5173)
    ADAPay wallet link:<nonce>
 5. Frontend sends nonce + key + signature + addresses to backend.
 6. Backend verifies signature and stores linked wallet.
+
+## Send Flow
+
+1. User links a wallet first.
+2. Frontend loads the linked wallet provider from the backend.
+3. Send page uses Lucid + Blockfrost to build, sign, and submit a simple ADA transfer.
+4. Backend records the submitted tx hash in the transaction table.
 
 ## Database Tables
 

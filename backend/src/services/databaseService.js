@@ -41,6 +41,21 @@ export async function initializeDatabase() {
 
       CREATE UNIQUE INDEX IF NOT EXISTS ux_wallet_challenge_user_nonce
       ON wallet_link_challenges (user_id, nonce);
+
+      CREATE TABLE IF NOT EXISTS cardano_transactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        wallet_provider VARCHAR(50) NOT NULL,
+        network_id INTEGER NOT NULL,
+        tx_hash VARCHAR(128) UNIQUE NOT NULL,
+        recipient_address TEXT NOT NULL,
+        amount_lovelace BIGINT NOT NULL,
+        fee_lovelace BIGINT,
+        memo TEXT,
+        status VARCHAR(30) NOT NULL DEFAULT 'submitted',
+        submitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        confirmed_at TIMESTAMP
+      );
     `);
 
     console.log("✅ Database tables are ready.");
