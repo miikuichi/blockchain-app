@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { Send, AlertCircle } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
-import { adaToLovelace, sendAdaWithWallet } from "../services/cardanoTxService";
-
-const EMPTY_FORM = { address: "", amount: "", memo: "" };
-const API_BASE = "http://localhost:5000/api";
+ //import { adaToLovelace, sendAdaWithWallet } from "../services/cardanoTxService";
+import { connectWallet } from "../services/walletService";
+const EMPTY_FORM = { address: '', amount: '', memo: '' };
 
 export default function SendPayment() {
   const [form, setForm] = useState(EMPTY_FORM);
