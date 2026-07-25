@@ -1,23 +1,23 @@
-import { useEffect, useState } from 'react';
-import { Send, AlertCircle } from 'lucide-react';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import { adaToLovelace, sendAdaWithWallet } from '../services/cardanoTxService';
+import { useEffect, useState } from "react";
+import { Send, AlertCircle } from "lucide-react";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import { adaToLovelace, sendAdaWithWallet } from "../services/cardanoTxService";
 
-const EMPTY_FORM = { address: '', amount: '', memo: '' };
-const API_BASE = 'http://localhost:5000/api';
+const EMPTY_FORM = { address: "", amount: "", memo: "" };
+const API_BASE = "http://localhost:5000/api";
 
 export default function SendPayment() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [txHash, setTxHash] = useState('');
+  const [txHash, setTxHash] = useState("");
   const [linkedWallet, setLinkedWallet] = useState(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const loadLinkedWallet = async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
 
       if (!token) {
         return;
@@ -50,20 +50,20 @@ export default function SendPayment() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
 
     if (!token) {
-      setError('Please log in again before sending a payment.');
+      setError("Please log in again before sending a payment.");
       return;
     }
 
     if (!linkedWallet) {
-      setError('Link a Cardano wallet from the dashboard before sending.');
+      setError("Link a Cardano wallet from the dashboard before sending.");
       return;
     }
 
     setIsSubmitting(true);
-    setError('');
+    setError("");
 
     try {
       const txResult = await sendAdaWithWallet({
@@ -74,9 +74,9 @@ export default function SendPayment() {
       });
 
       const recordResponse = await fetch(`${API_BASE}/transactions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -92,14 +92,16 @@ export default function SendPayment() {
       const recordData = await recordResponse.json();
 
       if (!recordResponse.ok) {
-        throw new Error(recordData.message || 'Transaction submitted but could not be saved.');
+        throw new Error(
+          recordData.message || "Transaction submitted but could not be saved.",
+        );
       }
 
       setTxHash(recordData.transaction?.tx_hash || txResult.txHash);
       setSubmitted(true);
       setForm(EMPTY_FORM);
     } catch (submitError) {
-      setError(submitError.message || 'Transaction failed.');
+      setError(submitError.message || "Transaction failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -119,14 +121,15 @@ export default function SendPayment() {
               <div className="success-icon">✓</div>
               <h3>Transaction Submitted</h3>
               <p>
-                Your transaction has been broadcast to the Cardano network and is awaiting confirmation.
+                Your transaction has been broadcast to the Cardano network and
+                is awaiting confirmation.
               </p>
               {txHash && <p className="tx-hash">Tx Hash: {txHash}</p>}
               <Button
                 variant="outline"
                 onClick={() => {
                   setSubmitted(false);
-                  setTxHash('');
+                  setTxHash("");
                 }}
               >
                 Send Another
@@ -138,8 +141,8 @@ export default function SendPayment() {
                 <span className="card-title">Wallet</span>
                 <p>
                   {linkedWallet
-                    ? `${linkedWallet.walletProvider} (${linkedWallet.networkId === 0 ? 'Preprod/Testnet' : 'Mainnet'})`
-                    : 'No wallet linked yet'}
+                    ? `${linkedWallet.walletProvider} (${linkedWallet.networkId === 0 ? "Preprod/Testnet" : "Mainnet"})`
+                    : "No wallet linked yet"}
                 </p>
               </div>
 
@@ -190,7 +193,9 @@ export default function SendPayment() {
 
               <div className="form-fee-note">
                 <AlertCircle size={13} />
-                <span>Network fee is estimated by the wallet during submission.</span>
+                <span>
+                  Network fee is estimated by the wallet during submission.
+                </span>
               </div>
 
               {error && <p className="send-error">{error}</p>}
@@ -203,7 +208,7 @@ export default function SendPayment() {
                 className="btn-full"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Submitting...' : 'Confirm &amp; Send'}
+                {isSubmitting ? "Submitting..." : "Confirm &amp; Send"}
               </Button>
             </form>
           )}
@@ -213,9 +218,16 @@ export default function SendPayment() {
           <p className="card-title">Tips</p>
           <ul className="tips-list">
             <li>Always double-check the recipient address before sending.</li>
-            <li>ADA transactions on Cardano are irreversible once confirmed.</li>
-            <li>Keep your wallet on the same network as the app target network.</li>
-            <li>Transactions typically confirm within a few blocks after submission.</li>
+            <li>
+              ADA transactions on Cardano are irreversible once confirmed.
+            </li>
+            <li>
+              Keep your wallet on the same network as the app target network.
+            </li>
+            <li>
+              Transactions typically confirm within a few blocks after
+              submission.
+            </li>
           </ul>
         </Card>
       </div>
