@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import Card from '../components/ui/Card';
-import TransactionItem from '../components/transactions/TransactionItem';
-import { fetchTransactions } from '../services/transactionService';
+import { useEffect, useMemo, useState } from "react";
+import Card from "../components/ui/Card";
+import TransactionItem from "../components/transactions/TransactionItem";
+import { fetchTransactions } from "../services/transactionService";
 
-const TABS = ['all', 'sent', 'received'];
+const TABS = ["all", "sent", "received"];
 
 export default function Transactions() {
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState("all");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadTransactions = async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
 
       if (!token) {
         setLoading(false);
@@ -35,16 +35,16 @@ export default function Transactions() {
   const filtered = useMemo(
     () =>
       transactions.filter(
-        (tx) => activeTab === 'all' || (tx.type || 'sent') === activeTab,
+        (tx) => activeTab === "all" || (tx.type || "sent") === activeTab,
       ),
     [transactions, activeTab],
   );
 
   const pageDescription = loading
-    ? 'Loading submitted Cardano transactions...'
+    ? "Loading submitted Cardano transactions..."
     : transactions.length === 0
-      ? 'No transactions have been recorded yet.'
-      : `${transactions.length} transaction${transactions.length === 1 ? '' : 's'} recorded.`;
+      ? "No transactions have been recorded yet."
+      : `${transactions.length} transaction${transactions.length === 1 ? "" : "s"} recorded.`;
 
   return (
     <div>
@@ -57,7 +57,7 @@ export default function Transactions() {
         {TABS.map((tab) => (
           <button
             key={tab}
-            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+            className={`tab-btn ${activeTab === tab ? "active" : ""}`}
             onClick={() => setActiveTab(tab)}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}

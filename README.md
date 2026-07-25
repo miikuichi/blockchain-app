@@ -11,11 +11,14 @@ Implemented in this phase:
 - Wallet ownership verification on backend using COSE parsing + Ed25519 signature verification
 - Wallet linkage persistence in PostgreSQL
 - Wallet link UI in the dashboard
+- Real ADA send flow from frontend wallet (Lucid + CIP-30)
+- Transaction recording and history views backed by PostgreSQL
+- Transaction confirmation reconciliation against Blockfrost
+- Background scheduler for transaction reconciliation
 
 Not implemented yet:
 
-- Real ADA send transaction pipeline (build/sign/submit)
-- Chain-backed transaction history and balance sync
+- Received transaction indexing and full portfolio balance indexing
 - Production deployment hardening
 
 ## Tech Stack
@@ -52,6 +55,11 @@ JWT_SECRET=replace_with_secure_secret
 
 # 0 = testnet/preprod, 1 = mainnet
 CARDANO_TARGET_NETWORK_ID=0
+BLOCKFROST_PROJECT_ID=your_blockfrost_project_id
+
+# Optional background reconciliation config
+ENABLE_BACKGROUND_RECONCILE=true
+RECONCILE_INTERVAL_MS=60000
 
 PORT=5000
 ```
@@ -60,6 +68,7 @@ Notes:
 
 - Keep CARDANO_TARGET_NETWORK_ID at 0 while developing and testing.
 - Wallet linking will fail when wallet network does not match this value.
+- RECONCILE_INTERVAL_MS has a minimum safety floor of 10000ms.
 
 ## Environment Variables (Frontend)
 
@@ -113,6 +122,15 @@ Frontend runs on the Vite local URL (usually http://localhost:5173)
 - GET /api/wallet/me
   - Returns linked wallet for current user
 
+### Transactions (Requires Bearer JWT)
+
+- POST /api/transactions
+  - Records a submitted tx hash and metadata
+- GET /api/transactions
+  - Returns recorded transactions for the current user
+- POST /api/transactions/reconcile
+  - Checks submitted/pending tx hashes against Blockfrost and updates confirmed status
+
 ## Wallet Link Flow (CIP-30)
 
 1. User logs in and receives JWT.
@@ -129,6 +147,8 @@ Frontend runs on the Vite local URL (usually http://localhost:5173)
 2. Frontend loads the linked wallet provider from the backend.
 3. Send page uses Lucid + Blockfrost to build, sign, and submit a simple ADA transfer.
 4. Backend records the submitted tx hash in the transaction table.
+5. Dashboard and Transactions pages trigger reconciliation to update pending transactions to confirmed.
+6. Background scheduler continuously reconciles pending transactions even when users are offline.
 
 ## Database Tables
 
@@ -149,15 +169,16 @@ Created automatically on backend startup:
 
 ## Known Constraints
 
-- This phase links wallet identity only; it does not send on-chain transactions yet.
+- This phase supports outgoing on-chain sends, but currently indexes only sends initiated through this app.
 - Network is intentionally preprod-first (target network ID 0).
 - If your wallet has no used address yet, linking can fail until at least one address is active in wallet.
+- Reconciliation currently checks only outgoing transactions recorded by this app.
 
 ## Next Steps
 
 Planned next implementation steps:
 
-1. Add real ADA transfer flow (build/sign/submit).
-2. Persist tx hash and confirmation state.
-3. Replace dashboard placeholders with live chain-backed data.
-4. Add transaction history pagination and filters.
+1. Index incoming transactions and compute true wallet balance from chain data.
+2. Add pagination and advanced filters for transaction history.
+3. Harden rate limiting, retries, and observability for Blockfrost calls.
+4. Add backoff and batching controls for high-volume reconciliation workloads.

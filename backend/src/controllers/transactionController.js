@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { reconcilePendingTransactions } from "../services/reconciliationService.js";
 
 export const recordTransaction = async (req, res) => {
   try {
@@ -102,6 +103,34 @@ export const listTransactions = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to load transactions.",
+    });
+  }
+};
+
+export const reconcileTransactions = async (req, res) => {
+  try {
+    const result = await reconcilePendingTransactions({
+      userId: req.user.id,
+      limit: 50,
+    });
+
+    return res.status(200).json({
+      success: true,
+      checked: result.checked,
+      updated: result.updated,
+    });
+  } catch (error) {
+    if (error.message?.includes("BLOCKFROST_PROJECT_ID")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to reconcile transactions.",
     });
   }
 };

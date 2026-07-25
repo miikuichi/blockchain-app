@@ -43,6 +43,17 @@ export function normalizeTransaction(record) {
 }
 
 export async function fetchTransactions(token) {
+  try {
+    await fetch(`${API_BASE}/transactions/reconcile`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch {
+    // Keep history loading resilient even if reconciliation fails.
+  }
+
   const response = await fetch(`${API_BASE}/transactions`, {
     headers: {
       Authorization: `Bearer ${token}`,
