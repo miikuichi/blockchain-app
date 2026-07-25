@@ -54,8 +54,21 @@ export async function sendAdaWithWallet({
   const { api } = await connectWallet(walletProvider);
   const network = networkId === 0 ? "Preprod" : "Mainnet";
 
-  const lucid = await Lucid.new(new Blockfrost(blockfrostUrl, projectId), network);
-  lucid.selectWallet(api);
+  console.log("Step 1");
+  console.log("Project ID:", projectId);
+  console.log("Network:", network);
+  console.log("URL:", blockfrostUrl);
+
+  const provider = new Blockfrost(blockfrostUrl, projectId);
+
+  console.log("Step 2");
+
+  const lucid = await Lucid.new(provider, network);
+
+  console.log("Step 3");
+
+  /*const lucid = await Lucid.new(new Blockfrost(blockfrostUrl, projectId), network);
+  lucid.selectWallet(api);*/
 
   const address = validateRecipientAddress(recipientAddress);
   const lovelace = adaToLovelace(amountAda);

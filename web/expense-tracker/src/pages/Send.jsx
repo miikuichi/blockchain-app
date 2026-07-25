@@ -4,6 +4,8 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
  //import { adaToLovelace, sendAdaWithWallet } from "../services/cardanoTxService";
 import { connectWallet } from "../services/walletService";
+
+
 const EMPTY_FORM = { address: '', amount: '', memo: '' };
 
 export default function SendPayment() {
@@ -48,6 +50,11 @@ export default function SendPayment() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const {
+      adaToLovelace,
+      sendAdaWithWallet,
+    } = await import("../services/cardanoTxService");
 
     const token = localStorage.getItem("token");
 
