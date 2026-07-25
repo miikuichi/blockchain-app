@@ -17,32 +17,43 @@ export default function SendPayment() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const loadLinkedWallet = async () => {
-      const token = localStorage.getItem("token");
+  const loadLinkedWallet = async () => {
+    const API_BASE = "http://localhost:5000/api";
+    const token = localStorage.getItem("token");
 
-      if (!token) {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/wallet/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Failed to load linked wallet");
         return;
       }
 
-      try {
-        const response = await fetch(`${API_BASE}/wallet/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      const data = await response.json();
 
-        const data = await response.json();
+      console.log("Wallet from backend:", data);
 
-        if (response.ok) {
-          setLinkedWallet(data.wallet);
-        }
-      } catch {
-        // Keep the page usable even if the backend is temporarily unavailable.
+      if (data.wallet) {
+        setLinkedWallet(data.wallet);
+      } else {
+        setLinkedWallet(null);
       }
-    };
+    } catch (err) {
+      console.error("Wallet load failed:", err);
+      setLinkedWallet(null);
+    }
+  };
 
-    loadLinkedWallet();
-  }, []);
+  loadLinkedWallet();
+}, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -64,7 +75,11 @@ export default function SendPayment() {
     }
 
     if (!linkedWallet) {
-      setError("Link a Cardano wallet from the dashboard before sending.");
+      console.log("linkedWallet =", linkedWallet);
+
+      setError(
+        "No linked wallet found. Please connect your wallet again from the Dashboard."
+      );
       return;
     }
 
