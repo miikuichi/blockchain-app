@@ -6,6 +6,7 @@ import {
   RefreshCw,
   TrendingUp,
   Send,
+  Activity,
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import StatCard from "../components/ui/StatCard";
@@ -36,6 +37,85 @@ function sumAda(txList) {
 export default function Dashboard({ onNavigate }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scheduler, setScheduler] = useState(null);
+  const [schedulerLoading, setSchedulerLoading] = useState(true);
+  const [schedulerError, setSchedulerError] = useState("");
+  const [runNowLoading, setRunNowLoading] = useState(false);
+
+  const fetchSchedulerStatus = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      setSchedulerLoading(true);
+      setSchedulerError("");
+
+      const response = await fetch(`${API_BASE}/health/reconciliation`, {
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : undefined,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to load reconciliation status.");
+      }
+
+      setScheduler(data.scheduler || null);
+    } catch (error) {
+      setSchedulerError(error.message || "Unable to load reconciliation status.");
+      setScheduler(null);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  };
+
+  const runReconciliationNow = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setSchedulerError("Please log in again to trigger reconciliation.");
+      return;
+    }
+
+    try {
+      setRunNowLoading(true);
+      setSchedulerError("");
+
+      const response = await fetch(`${API_BASE}/health/reconciliation/run`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to run reconciliation.");
+      }
+
+      setScheduler(data.scheduler || null);
+    } catch (error) {
+      setSchedulerError(error.message || "Unable to run reconciliation.");
+    } finally {
+      setRunNowLoading(false);
+    }
+  };
+
+  const statusValue = schedulerLoading
+    ? "Loading"
+    : scheduler?.inProgress
+      ? "Running"
+      : scheduler?.running
+        ? "Online"
+        : "Offline";
+
+  const lastSuccessLabel = scheduler?.lastSuccessAt
+    ? new Date(scheduler.lastSuccessAt).toLocaleString()
+    : "—";
 
   useEffect(() => {
     const loadTransactions = async () => {
@@ -57,6 +137,15 @@ export default function Dashboard({ onNavigate }) {
     };
 
     loadTransactions();
+    fetchSchedulerStatus();
+
+    const schedulerRefreshHandle = setInterval(() => {
+      fetchSchedulerStatus();
+    }, 60000);
+
+    return () => {
+      clearInterval(schedulerRefreshHandle);
+    };
   }, []);
 
   const sentTotal = sumAda(
@@ -160,6 +249,56 @@ export default function Dashboard({ onNavigate }) {
 
       <div className="wallet-connect-section">
         <WalletConnectCard />
+      </div>
+
+      <div className="reconcile-monitor-section">
+        <Card className="reconcile-monitor-card">
+          <div className="section-header">
+            <span className="card-title">Reconciliation Monitor</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<RefreshCw size={14} />}
+              onClick={fetchSchedulerStatus}
+              disabled={schedulerLoading || runNowLoading}
+            >
+              Refresh
+            </Button>
+          </div>
+
+          <div className="reconcile-monitor-grid">
+            <div className="reconcile-metric">
+              <span>Status</span>
+              <strong>{statusValue}</strong>
+            </div>
+            <div className="reconcile-metric">
+              <span>Last Success</span>
+              <strong>{lastSuccessLabel}</strong>
+            </div>
+            <div className="reconcile-metric">
+              <span>Last Checked</span>
+              <strong>{scheduler?.lastCheckedCount ?? 0}</strong>
+            </div>
+            <div className="reconcile-metric">
+              <span>Last Updated</span>
+              <strong>{scheduler?.lastUpdatedCount ?? 0}</strong>
+            </div>
+          </div>
+
+          {schedulerError && <p className="reconcile-error">{schedulerError}</p>}
+
+          <div className="reconcile-actions">
+            <Button
+              variant="gold"
+              size="sm"
+              icon={<Activity size={14} />}
+              onClick={runReconciliationNow}
+              disabled={runNowLoading}
+            >
+              {runNowLoading ? "Running..." : "Run Now"}
+            </Button>
+          </div>
+        </Card>
       </div>
     </div>
   );

@@ -131,6 +131,13 @@ Frontend runs on the Vite local URL (usually http://localhost:5173)
 - POST /api/transactions/reconcile
   - Checks submitted/pending tx hashes against Blockfrost and updates confirmed status
 
+### Reconciliation Health
+
+- GET /api/health/reconciliation
+  - Returns scheduler runtime status (enabled/running/inProgress/last run metrics)
+- POST /api/health/reconciliation/run (Requires Bearer JWT)
+  - Triggers an immediate reconciliation run and returns updated scheduler status
+
 ## Wallet Link Flow (CIP-30)
 
 1. User logs in and receives JWT.
@@ -149,6 +156,13 @@ Frontend runs on the Vite local URL (usually http://localhost:5173)
 4. Backend records the submitted tx hash in the transaction table.
 5. Dashboard and Transactions pages trigger reconciliation to update pending transactions to confirmed.
 6. Background scheduler continuously reconciles pending transactions even when users are offline.
+
+## Reconciliation Monitor UI
+
+1. Open Dashboard and find the Reconciliation Monitor card.
+2. Use Refresh to fetch scheduler runtime state.
+3. Use Run Now to trigger an immediate reconciliation cycle.
+4. Check Last Checked and Last Updated metrics to confirm status transitions.
 
 ## Database Tables
 

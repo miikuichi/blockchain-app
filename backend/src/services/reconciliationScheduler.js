@@ -1,6 +1,14 @@
 import { reconcilePendingTransactions } from "./reconciliationService.js";
 
 let schedulerHandle = null;
+let runInProgress = false;
+let schedulerIntervalMs = null;
+let lastRunStartedAt = null;
+let lastRunFinishedAt = null;
+let lastSuccessAt = null;
+let lastErrorMessage = null;
+let lastCheckedCount = 0;
+let lastUpdatedCount = 0;
 
 function isEnabled() {
   const raw = (process.env.ENABLE_BACKGROUND_RECONCILE || "true").toLowerCase();
@@ -17,6 +25,54 @@ function intervalMs() {
   return parsed;
 }
 
+async function executeReconciliationRun() {
+  if (runInProgress) {
+    return;
+  }
+
+  runInProgress = true;
+  lastRunStartedAt = new Date();
+
+  try {
+    const result = await reconcilePendingTransactions({ limit: 200 });
+
+    lastCheckedCount = result.checked;
+    lastUpdatedCount = result.updated;
+    lastSuccessAt = new Date();
+    lastErrorMessage = null;
+
+    if (result.updated > 0) {
+      console.log(`✅ Reconciled ${result.updated}/${result.checked} pending transaction(s).`);
+    }
+  } catch (error) {
+    lastErrorMessage = error.message;
+    console.error("❌ Background reconciliation failed:", error.message);
+  } finally {
+    lastRunFinishedAt = new Date();
+    runInProgress = false;
+  }
+}
+
+export function getReconciliationSchedulerStatus() {
+  return {
+    enabled: isEnabled(),
+    running: Boolean(schedulerHandle),
+    inProgress: runInProgress,
+    intervalMs: schedulerIntervalMs,
+    lastRunStartedAt: lastRunStartedAt ? lastRunStartedAt.toISOString() : null,
+    lastRunFinishedAt: lastRunFinishedAt ? lastRunFinishedAt.toISOString() : null,
+    lastSuccessAt: lastSuccessAt ? lastSuccessAt.toISOString() : null,
+    lastErrorMessage,
+    lastCheckedCount,
+    lastUpdatedCount,
+  };
+}
+
+export async function runReconciliationNow() {
+  await executeReconciliationRun();
+  return getReconciliationSchedulerStatus();
+}
+
 export function startBackgroundReconciliation() {
   if (!isEnabled()) {
     console.log("ℹ️ Background reconciliation is disabled.");
@@ -27,22 +83,10 @@ export function startBackgroundReconciliation() {
     return;
   }
 
-  const everyMs = intervalMs();
+  schedulerIntervalMs = intervalMs();
 
-  const run = async () => {
-    try {
-      const result = await reconcilePendingTransactions({ limit: 200 });
+  executeReconciliationRun();
+  schedulerHandle = setInterval(executeReconciliationRun, schedulerIntervalMs);
 
-      if (result.updated > 0) {
-        console.log(`✅ Reconciled ${result.updated}/${result.checked} pending transaction(s).`);
-      }
-    } catch (error) {
-      console.error("❌ Background reconciliation failed:", error.message);
-    }
-  };
-
-  run();
-  schedulerHandle = setInterval(run, everyMs);
-
-  console.log(`⏱️ Background reconciliation started (every ${everyMs}ms).`);
+  console.log(`⏱️ Background reconciliation started (every ${schedulerIntervalMs}ms).`);
 }
