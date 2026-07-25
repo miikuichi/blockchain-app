@@ -130,6 +130,9 @@ export default function WalletConnectCard() {
 
       setLinkedWallet(verifyData.wallet);
     } catch (err) {
+      console.error(err);
+      console.log("FAILED AT:", err);
+
       setError(err.message || "Wallet linking failed.");
     } finally {
       setIsLoading(false);

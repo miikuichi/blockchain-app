@@ -14,7 +14,7 @@ const PAGES = {
 export default function App() {
   const [page, setPage] = useState('dashboard');
   const PageComponent = PAGES[page] ?? Dashboard;
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => { return !!localStorage.getItem("token");});
 
    if (!isLoggedIn) {
     return (
@@ -26,7 +26,12 @@ export default function App() {
   
   return (
     <div className="app-layout">
-      <Sidebar activePage={page} onNavigate={setPage} />
+      <Sidebar activePage={page} onNavigate={setPage}
+            onLogout={() => {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            setIsLoggedIn(false);
+        }} />     
       <main className="main-content">
         <PageComponent onNavigate={setPage} />
       </main>
