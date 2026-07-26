@@ -58,7 +58,10 @@ export default function WalletConnectCard() {
       setAvailableWallets(wallets);
 
       setSelectedWallet((currentValue) => {
-        if (currentValue && wallets.some((wallet) => wallet.key === currentValue)) {
+        if (
+          currentValue &&
+          wallets.some((wallet) => wallet.key === currentValue)
+        ) {
           return currentValue;
         }
 

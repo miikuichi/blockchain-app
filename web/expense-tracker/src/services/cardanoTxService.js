@@ -1,3 +1,5 @@
+import { BlockfrostProvider, BrowserWallet, Transaction } from "@meshsdk/core";
+
 export function adaToLovelace(amount) {
   const normalized = String(amount).trim();
 
@@ -26,11 +28,42 @@ export function validateRecipientAddress(address) {
 }
 
 export async function sendAdaWithWallet({
+  walletProvider,
+  networkId,
   recipientAddress,
+  amountAda,
 }) {
-  validateRecipientAddress(recipientAddress);
+  const projectId = import.meta.env.VITE_BLOCKFROST_PROJECT_ID;
 
-  throw new Error(
-    "Browser-side ADA sending is disabled because Lucid Evolution was removed to avoid the wasm runtime error.",
-  );
+  if (!projectId) {
+    throw new Error("Missing VITE_BLOCKFROST_PROJECT_ID environment variable.");
+  }
+
+  const address = validateRecipientAddress(recipientAddress);
+  const lovelace = adaToLovelace(amountAda);
+
+  const wallet = await BrowserWallet.enable(walletProvider);
+  const walletNetworkId = await wallet.getNetworkId();
+
+  if (walletNetworkId !== networkId) {
+    throw new Error("Wallet network changed. Please reconnect your wallet.");
+  }
+
+  const blockchainProvider = new BlockfrostProvider(projectId);
+  const tx = new Transaction({
+    initiator: wallet,
+    fetcher: blockchainProvider,
+    submitter: blockchainProvider,
+  });
+
+  tx.sendLovelace(address, lovelace.toString());
+
+  const unsignedTx = await tx.build();
+  const signedTx = await wallet.signTx(unsignedTx);
+  const txHash = await wallet.submitTx(signedTx);
+
+  return {
+    txHash,
+    feeLovelace: null,
+  };
 }

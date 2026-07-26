@@ -14,6 +14,7 @@ import Button from "../components/ui/Button";
 import TransactionItem from "../components/transactions/TransactionItem";
 import WalletConnectCard from "../components/wallet/WalletConnectCard";
 import { fetchTransactions } from "../services/transactionService";
+import { getWalletRuntimeInfo } from "../services/walletService";
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -41,6 +42,10 @@ export default function Dashboard({ onNavigate }) {
   const [schedulerLoading, setSchedulerLoading] = useState(true);
   const [schedulerError, setSchedulerError] = useState("");
   const [runNowLoading, setRunNowLoading] = useState(false);
+  const [linkedWallet, setLinkedWallet] = useState(null);
+  const [availableBalanceAda, setAvailableBalanceAda] = useState("—");
+  const [receiveAddress, setReceiveAddress] = useState("");
+  const [receiveMessage, setReceiveMessage] = useState("");
 
   const fetchSchedulerStatus = async () => {
     const token = localStorage.getItem("token");
@@ -136,7 +141,42 @@ export default function Dashboard({ onNavigate }) {
       }
     };
 
+    const loadWalletRuntime = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/wallet/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.wallet) {
+          setLinkedWallet(null);
+          setAvailableBalanceAda("—");
+          setReceiveAddress("");
+          return;
+        }
+
+        setLinkedWallet(data.wallet);
+
+        const runtime = await getWalletRuntimeInfo(data.wallet.walletProvider);
+        setAvailableBalanceAda(runtime.balanceAda);
+        setReceiveAddress(runtime.receiveAddress || "");
+      } catch {
+        setAvailableBalanceAda("—");
+        setReceiveAddress("");
+      }
+    };
+
     loadTransactions();
+    loadWalletRuntime();
     fetchSchedulerStatus();
 
     const schedulerRefreshHandle = setInterval(() => {
@@ -147,6 +187,20 @@ export default function Dashboard({ onNavigate }) {
       clearInterval(schedulerRefreshHandle);
     };
   }, []);
+
+  const onReceiveClick = async () => {
+    if (!receiveAddress) {
+      setReceiveMessage("Connect and unlock Lace to fetch your receive address.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(receiveAddress);
+      setReceiveMessage("Receive address copied to clipboard.");
+    } catch {
+      setReceiveMessage("Unable to copy address automatically.");
+    }
+  };
 
   const sentTotal = sumAda(
     transactions.filter((tx) => (tx.type || "sent") === "sent"),
@@ -178,7 +232,7 @@ export default function Dashboard({ onNavigate }) {
     },
     {
       label: "Linked Wallet",
-      value: transactions.length > 0 ? "Active" : "—",
+      value: linkedWallet ? "Active" : "—",
       sub: "CIP-30 wallet",
       icon: Wallet,
     },
@@ -199,7 +253,7 @@ export default function Dashboard({ onNavigate }) {
               <span>Available Balance</span>
             </div>
             <div className="balance-amount">
-              —<span className="balance-unit"> ₳</span>
+              {availableBalanceAda}<span className="balance-unit"> ₳</span>
             </div>
           </div>
           <div className="balance-actions">
@@ -210,11 +264,16 @@ export default function Dashboard({ onNavigate }) {
             >
               Send
             </Button>
-            <Button variant="ghost" icon={<ArrowDownLeft size={15} />}>
+            <Button
+              variant="ghost"
+              icon={<ArrowDownLeft size={15} />}
+              onClick={onReceiveClick}
+            >
               Receive
             </Button>
           </div>
         </div>
+        {receiveMessage && <p className="balance-fiat">{receiveMessage}</p>}
         <div className="balance-glow" />
       </div>
 

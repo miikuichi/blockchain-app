@@ -6,7 +6,7 @@ import { adaToLovelace } from "../services/cardanoTxService";
 
 const API_BASE = "http://localhost:5000/api";
 
-const EMPTY_FORM = { address: '', amount: '', memo: '' };
+const EMPTY_FORM = { address: "", amount: "", memo: "" };
 
 export default function SendPayment() {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -17,43 +17,43 @@ export default function SendPayment() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-  const loadLinkedWallet = async () => {
-    const API_BASE = "http://localhost:5000/api";
-    const token = localStorage.getItem("token");
+    const loadLinkedWallet = async () => {
+      const API_BASE = "http://localhost:5000/api";
+      const token = localStorage.getItem("token");
 
-    if (!token) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE}/wallet/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        console.error("Failed to load linked wallet");
+      if (!token) {
         return;
       }
 
-      const data = await response.json();
+      try {
+        const response = await fetch(`${API_BASE}/wallet/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      console.log("Wallet from backend:", data);
+        if (!response.ok) {
+          console.error("Failed to load linked wallet");
+          return;
+        }
 
-      if (data.wallet) {
-        setLinkedWallet(data.wallet);
-      } else {
+        const data = await response.json();
+
+        console.log("Wallet from backend:", data);
+
+        if (data.wallet) {
+          setLinkedWallet(data.wallet);
+        } else {
+          setLinkedWallet(null);
+        }
+      } catch (err) {
+        console.error("Wallet load failed:", err);
         setLinkedWallet(null);
       }
-    } catch (err) {
-      console.error("Wallet load failed:", err);
-      setLinkedWallet(null);
-    }
-  };
+    };
 
-  loadLinkedWallet();
-}, []);
+    loadLinkedWallet();
+  }, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -73,7 +73,7 @@ export default function SendPayment() {
       console.log("linkedWallet =", linkedWallet);
 
       setError(
-        "No linked wallet found. Please connect your wallet again from the Dashboard."
+        "No linked wallet found. Please connect your wallet again from the Dashboard.",
       );
       return;
     }
@@ -82,15 +82,28 @@ export default function SendPayment() {
     setError("");
 
     try {
-      const recordResponse = await fetch(`${API_BASE}/transactions/send`, {
+      const { sendAdaWithWallet } = await import("../services/cardanoTxService");
+
+      const txResult = await sendAdaWithWallet({
+        walletProvider: linkedWallet.walletProvider,
+        networkId: linkedWallet.networkId,
+        recipientAddress: form.address,
+        amountAda: form.amount,
+      });
+
+      const recordResponse = await fetch(`${API_BASE}/transactions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          walletProvider: linkedWallet.walletProvider,
+          networkId: linkedWallet.networkId,
+          txHash: txResult.txHash,
           recipientAddress: form.address,
           amountLovelace: adaToLovelace(form.amount).toString(),
+          feeLovelace: txResult.feeLovelace || null,
           memo: form.memo || null,
         }),
       });
@@ -103,7 +116,7 @@ export default function SendPayment() {
         );
       }
 
-      setTxHash(recordData.transaction?.tx_hash || "");
+      setTxHash(recordData.transaction?.tx_hash || txResult.txHash);
       setSubmitted(true);
       setForm(EMPTY_FORM);
     } catch (submitError) {
@@ -127,9 +140,8 @@ export default function SendPayment() {
               <div className="success-icon">✓</div>
               <h3>Transaction Submitted</h3>
               <p>
-                Your transfer request has been recorded by the backend.
-                Complete the final signing and broadcast from your wallet to
-                submit it on-chain.
+                Your transaction has been signed with Lace and broadcast to the
+                Cardano network.
               </p>
               {txHash && <p className="tx-hash">Tx Hash: {txHash}</p>}
               <Button
@@ -215,7 +227,7 @@ export default function SendPayment() {
                 className="btn-full"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Creating Request..." : "Create Transfer Request"}
+                {isSubmitting ? "Submitting..." : "Confirm & Send"}
               </Button>
             </form>
           )}
@@ -226,15 +238,12 @@ export default function SendPayment() {
           <ul className="tips-list">
             <li>Always double-check the recipient address before sending.</li>
             <li>
-              Transfer requests are saved first; finalize and broadcast using
-              your wallet.
+              ADA transactions on Cardano are irreversible once confirmed.
             </li>
             <li>
               Keep your wallet on the same network as the app target network.
             </li>
-            <li>
-              On-chain confirmation starts only after wallet broadcast.
-            </li>
+            <li>Transactions confirm after network inclusion.</li>
           </ul>
         </Card>
       </div>
