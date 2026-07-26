@@ -116,7 +116,7 @@ export async function indexIncomingTransactions({ userId = null } = {}) {
 
   const walletQuery = await pool.query(
     `
-      SELECT wallet_provider, network_id, used_address_hex
+      SELECT wallet_provider, network_id, used_address_hex, used_address_bech32
       FROM user_wallets
       WHERE user_id = $1
     `,
@@ -129,7 +129,7 @@ export async function indexIncomingTransactions({ userId = null } = {}) {
 
   const wallet = walletQuery.rows[0];
   const networkBaseUrl = BLOCKFROST_URLS[wallet.network_id] || BLOCKFROST_URLS[0];
-  const address = wallet.used_address_hex;
+  const address = wallet.used_address_bech32 || wallet.used_address_hex;
 
   try {
     const txListResponse = await fetch(
@@ -201,7 +201,7 @@ export async function indexIncomingTransactions({ userId = null } = {}) {
             sender_address
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmed', $9, COALESCE($10, NOW()), 'received', $11)
-          ON CONFLICT (tx_hash)
+          ON CONFLICT (user_id, tx_hash, direction)
           DO UPDATE
           SET
             wallet_provider = EXCLUDED.wallet_provider,
@@ -212,7 +212,7 @@ export async function indexIncomingTransactions({ userId = null } = {}) {
             memo = EXCLUDED.memo,
             status = EXCLUDED.status,
             confirmed_at = COALESCE(cardano_transactions.confirmed_at, EXCLUDED.confirmed_at),
-            direction = EXCLUDED.direction,
+
             sender_address = EXCLUDED.sender_address
         `,
         [

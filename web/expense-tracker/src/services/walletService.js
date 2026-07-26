@@ -68,11 +68,15 @@ export async function connectWallet(walletKey) {
     throw new Error("No used address found in this wallet yet.");
   }
 
+  const meshWallet = await BrowserWallet.enable(walletKey);
+  const changeAddress = await meshWallet.getChangeAddress();
+
   return {
     api,
     networkId,
     usedAddressHex: usedAddresses[0],
     rewardAddressHex: rewardAddresses?.[0] || null,
+    changeAddressBech32: changeAddress || null,
     walletProvider: walletKey,
   };
 }

@@ -145,6 +145,7 @@ export default function WalletConnectCard() {
           networkId: connection.networkId,
           usedAddressHex: connection.usedAddressHex,
           rewardAddressHex: connection.rewardAddressHex,
+          changeAddressBech32: connection.changeAddressBech32,
           nonce: challengeData.challenge.nonce,
           key: signed.key,
           signature: signed.signature,

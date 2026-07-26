@@ -106,6 +106,7 @@ export const verifyAndLinkWallet = async (req, res) => {
       networkId,
       usedAddressHex,
       rewardAddressHex,
+      changeAddressBech32,
       key,
       signature,
       nonce,
@@ -184,17 +185,19 @@ export const verifyAndLinkWallet = async (req, res) => {
         wallet_provider,
         network_id,
         used_address_hex,
+        used_address_bech32,
         reward_address_hex,
         cose_key_hex,
         linked_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       ON CONFLICT (user_id)
       DO UPDATE
       SET
         wallet_provider = EXCLUDED.wallet_provider,
         network_id = EXCLUDED.network_id,
         used_address_hex = EXCLUDED.used_address_hex,
+        used_address_bech32 = EXCLUDED.used_address_bech32,
         reward_address_hex = EXCLUDED.reward_address_hex,
         cose_key_hex = EXCLUDED.cose_key_hex,
         linked_at = NOW()
@@ -204,6 +207,7 @@ export const verifyAndLinkWallet = async (req, res) => {
         walletProvider,
         networkId,
         usedAddressHex,
+        changeAddressBech32 || null,
         rewardAddressHex || null,
         key,
       ]
@@ -246,7 +250,7 @@ export const getLinkedWallet = async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT wallet_provider, network_id, used_address_hex, reward_address_hex, linked_at
+      SELECT wallet_provider, network_id, used_address_hex, used_address_bech32, reward_address_hex, linked_at
       FROM user_wallets
       WHERE user_id = $1
       `,
@@ -260,6 +264,7 @@ export const getLinkedWallet = async (req, res) => {
             walletProvider: result.rows[0].wallet_provider,
             networkId: result.rows[0].network_id,
             usedAddressHex: result.rows[0].used_address_hex,
+            usedAddressBech32: result.rows[0].used_address_bech32,
             rewardAddressHex: result.rows[0].reward_address_hex,
             linkedAt: result.rows[0].linked_at,
           }

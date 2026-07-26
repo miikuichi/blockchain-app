@@ -17,13 +17,11 @@ async function mirrorTransactionToRecipient({
 }) {
   const recipientQuery = await pool.query(
     `
-      SELECT user_id, wallet_provider, network_id, used_address_hex, reward_address_hex
+      SELECT user_id, wallet_provider, network_id, used_address_hex, used_address_bech32, reward_address_hex
       FROM user_wallets
-      WHERE user_id <> $1
-        AND (
-          LOWER(COALESCE(used_address_hex, '')) = LOWER($2)
-          OR LOWER(COALESCE(reward_address_hex, '')) = LOWER($2)
-        )
+      WHERE
+        LOWER(COALESCE(used_address_bech32, '')) = LOWER($2)
+        OR LOWER(COALESCE(reward_address_hex, '')) = LOWER($2)
       LIMIT 1
     `,
     [senderUserId, recipientAddress]
@@ -51,7 +49,7 @@ async function mirrorTransactionToRecipient({
         sender_address
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'submitted', 'received', $9)
-      ON CONFLICT (tx_hash)
+      ON CONFLICT (user_id, tx_hash, direction)
       DO UPDATE
       SET
         wallet_provider = EXCLUDED.wallet_provider,
@@ -61,7 +59,6 @@ async function mirrorTransactionToRecipient({
         fee_lovelace = EXCLUDED.fee_lovelace,
         memo = EXCLUDED.memo,
         status = EXCLUDED.status,
-        direction = EXCLUDED.direction,
         sender_address = EXCLUDED.sender_address
     `,
     [
@@ -125,7 +122,7 @@ export const recordTransaction = async (req, res) => {
         sender_address
       )
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'submitted',$9,$10)
-      ON CONFLICT (tx_hash)
+      ON CONFLICT (user_id, tx_hash, direction)
       DO UPDATE
       SET
         wallet_provider = EXCLUDED.wallet_provider,
@@ -135,7 +132,6 @@ export const recordTransaction = async (req, res) => {
         fee_lovelace = EXCLUDED.fee_lovelace,
         memo = EXCLUDED.memo,
         status = EXCLUDED.status,
-        direction = EXCLUDED.direction,
         sender_address = EXCLUDED.sender_address
       RETURNING tx_hash, recipient_address, amount_lovelace, fee_lovelace, memo, status, submitted_at, direction, sender_address
       `,
@@ -153,17 +149,22 @@ export const recordTransaction = async (req, res) => {
       ]
     );
 
-    await mirrorTransactionToRecipient({
-      senderUserId: req.user.id,
-      senderWalletProvider: walletProvider,
-      senderNetworkId: networkId,
-      senderAddress: senderAddress || recipientAddress,
-      recipientAddress,
-      txHash,
-      amountLovelace: amountValue.toString(),
-      feeLovelace: feeValue === null ? null : feeValue.toString(),
-      memo,
-    });
+    try {
+      await mirrorTransactionToRecipient({
+        senderUserId: req.user.id,
+        senderWalletProvider: walletProvider,
+        senderNetworkId: networkId,
+        senderAddress: senderAddress || recipientAddress,
+        recipientAddress,
+        txHash,
+        amountLovelace: amountValue.toString(),
+        feeLovelace: feeValue === null ? null : feeValue.toString(),
+        memo,
+      });
+    } catch (mirrorError) {
+      // Sending should still succeed even if recipient mirroring fails.
+      console.error("Failed to mirror transaction to recipient:", mirrorError);
+    }
 
     return res.status(201).json({
       success: true,
