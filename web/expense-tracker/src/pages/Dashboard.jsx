@@ -65,12 +65,16 @@ export default function Dashboard({ onNavigate }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to load reconciliation status.");
+        throw new Error(
+          data.message || "Failed to load reconciliation status.",
+        );
       }
 
       setScheduler(data.scheduler || null);
     } catch (error) {
-      setSchedulerError(error.message || "Unable to load reconciliation status.");
+      setSchedulerError(
+        error.message || "Unable to load reconciliation status.",
+      );
       setScheduler(null);
     } finally {
       setSchedulerLoading(false);
@@ -190,7 +194,9 @@ export default function Dashboard({ onNavigate }) {
 
   const onReceiveClick = async () => {
     if (!receiveAddress) {
-      setReceiveMessage("Connect and unlock Lace to fetch your receive address.");
+      setReceiveMessage(
+        "Connect and unlock Lace to fetch your receive address.",
+      );
       return;
     }
 
@@ -253,7 +259,8 @@ export default function Dashboard({ onNavigate }) {
               <span>Available Balance</span>
             </div>
             <div className="balance-amount">
-              {availableBalanceAda}<span className="balance-unit"> ₳</span>
+              {availableBalanceAda}
+              <span className="balance-unit"> ₳</span>
             </div>
           </div>
           <div className="balance-actions">
@@ -344,7 +351,9 @@ export default function Dashboard({ onNavigate }) {
             </div>
           </div>
 
-          {schedulerError && <p className="reconcile-error">{schedulerError}</p>}
+          {schedulerError && (
+            <p className="reconcile-error">{schedulerError}</p>
+          )}
 
           <div className="reconcile-actions">
             <Button

@@ -82,7 +82,8 @@ export default function SendPayment() {
     setError("");
 
     try {
-      const { sendAdaWithWallet } = await import("../services/cardanoTxService");
+      const { sendAdaWithWallet } =
+        await import("../services/cardanoTxService");
 
       const txResult = await sendAdaWithWallet({
         walletProvider: linkedWallet.walletProvider,
