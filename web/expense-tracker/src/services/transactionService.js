@@ -29,10 +29,12 @@ export function formatTxDate(dateValue) {
 }
 
 export function normalizeTransaction(record) {
+  const isReceived = (record.direction || "sent") === "received";
+
   return {
     id: record.tx_hash,
-    type: record.direction || "sent",
-    address: record.recipient_address,
+    type: isReceived ? "received" : "sent",
+    address: isReceived ? record.sender_address || record.recipient_address : record.recipient_address,
     amount: formatAdaFromLovelace(record.amount_lovelace),
     status: record.status || "submitted",
     date: formatTxDate(record.confirmed_at || record.submitted_at),

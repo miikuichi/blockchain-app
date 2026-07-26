@@ -54,8 +54,16 @@ export async function initializeDatabase() {
         memo TEXT,
         status VARCHAR(30) NOT NULL DEFAULT 'submitted',
         submitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        confirmed_at TIMESTAMP
+        confirmed_at TIMESTAMP,
+        direction VARCHAR(20) NOT NULL DEFAULT 'sent',
+        sender_address TEXT
       );
+
+      ALTER TABLE cardano_transactions
+      ADD COLUMN IF NOT EXISTS direction VARCHAR(20) NOT NULL DEFAULT 'sent';
+
+      ALTER TABLE cardano_transactions
+      ADD COLUMN IF NOT EXISTS sender_address TEXT;
     `);
 
     console.log("✅ Database tables are ready.");

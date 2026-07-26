@@ -1,5 +1,82 @@
 import pool from "../config/db.js";
-import { reconcilePendingTransactions } from "../services/reconciliationService.js";
+import {
+  indexIncomingTransactions,
+  reconcilePendingTransactions,
+} from "../services/reconciliationService.js";
+
+async function mirrorTransactionToRecipient({
+  senderUserId,
+  senderWalletProvider,
+  senderNetworkId,
+  senderAddress,
+  recipientAddress,
+  txHash,
+  amountLovelace,
+  feeLovelace,
+  memo,
+}) {
+  const recipientQuery = await pool.query(
+    `
+      SELECT user_id, wallet_provider, network_id, used_address_hex, reward_address_hex
+      FROM user_wallets
+      WHERE user_id <> $1
+        AND (
+          LOWER(COALESCE(used_address_hex, '')) = LOWER($2)
+          OR LOWER(COALESCE(reward_address_hex, '')) = LOWER($2)
+        )
+      LIMIT 1
+    `,
+    [senderUserId, recipientAddress]
+  );
+
+  if (!recipientQuery.rows[0]) {
+    return;
+  }
+
+  const recipientWallet = recipientQuery.rows[0];
+
+  await pool.query(
+    `
+      INSERT INTO cardano_transactions (
+        user_id,
+        wallet_provider,
+        network_id,
+        tx_hash,
+        recipient_address,
+        amount_lovelace,
+        fee_lovelace,
+        memo,
+        status,
+        direction,
+        sender_address
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'submitted', 'received', $9)
+      ON CONFLICT (tx_hash)
+      DO UPDATE
+      SET
+        wallet_provider = EXCLUDED.wallet_provider,
+        network_id = EXCLUDED.network_id,
+        recipient_address = EXCLUDED.recipient_address,
+        amount_lovelace = EXCLUDED.amount_lovelace,
+        fee_lovelace = EXCLUDED.fee_lovelace,
+        memo = EXCLUDED.memo,
+        status = EXCLUDED.status,
+        direction = EXCLUDED.direction,
+        sender_address = EXCLUDED.sender_address
+    `,
+    [
+      recipientWallet.user_id,
+      recipientWallet.wallet_provider || senderWalletProvider,
+      recipientWallet.network_id ?? senderNetworkId,
+      txHash,
+      recipientAddress,
+      amountLovelace,
+      feeLovelace,
+      memo,
+      senderAddress,
+    ]
+  );
+}
 
 export const recordTransaction = async (req, res) => {
   try {
@@ -11,6 +88,8 @@ export const recordTransaction = async (req, res) => {
       amountLovelace,
       feeLovelace = null,
       memo = null,
+      direction = "sent",
+      senderAddress = null,
     } = req.body;
 
     if (
@@ -41,9 +120,11 @@ export const recordTransaction = async (req, res) => {
         amount_lovelace,
         fee_lovelace,
         memo,
-        status
+        status,
+        direction,
+        sender_address
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'submitted')
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'submitted',$9,$10)
       ON CONFLICT (tx_hash)
       DO UPDATE
       SET
@@ -53,8 +134,10 @@ export const recordTransaction = async (req, res) => {
         amount_lovelace = EXCLUDED.amount_lovelace,
         fee_lovelace = EXCLUDED.fee_lovelace,
         memo = EXCLUDED.memo,
-        status = EXCLUDED.status
-      RETURNING tx_hash, recipient_address, amount_lovelace, fee_lovelace, memo, status, submitted_at
+        status = EXCLUDED.status,
+        direction = EXCLUDED.direction,
+        sender_address = EXCLUDED.sender_address
+      RETURNING tx_hash, recipient_address, amount_lovelace, fee_lovelace, memo, status, submitted_at, direction, sender_address
       `,
       [
         req.user.id,
@@ -65,8 +148,22 @@ export const recordTransaction = async (req, res) => {
         amountValue.toString(),
         feeValue === null ? null : feeValue.toString(),
         memo,
+        direction,
+        senderAddress,
       ]
     );
+
+    await mirrorTransactionToRecipient({
+      senderUserId: req.user.id,
+      senderWalletProvider: walletProvider,
+      senderNetworkId: networkId,
+      senderAddress: senderAddress || recipientAddress,
+      recipientAddress,
+      txHash,
+      amountLovelace: amountValue.toString(),
+      feeLovelace: feeValue === null ? null : feeValue.toString(),
+      memo,
+    });
 
     return res.status(201).json({
       success: true,
@@ -83,9 +180,11 @@ export const recordTransaction = async (req, res) => {
 
 export const listTransactions = async (req, res) => {
   try {
+    await indexIncomingTransactions({ userId: req.user.id });
+
     const result = await pool.query(
       `
-      SELECT tx_hash, recipient_address, amount_lovelace, fee_lovelace, memo, status, submitted_at, confirmed_at
+      SELECT tx_hash, recipient_address, amount_lovelace, fee_lovelace, memo, status, submitted_at, confirmed_at, direction, sender_address
       FROM cardano_transactions
       WHERE user_id = $1
       ORDER BY submitted_at DESC
