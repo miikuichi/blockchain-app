@@ -50,14 +50,40 @@ export default function WalletConnectCard() {
   };
 
   useEffect(() => {
-    const wallets = getAvailableWallets();
-    setAvailableWallets(wallets);
+    let refreshTimer = null;
 
-    if (wallets.length > 0) {
-      setSelectedWallet(wallets[0].key);
+    const refreshWallets = () => {
+      const wallets = getAvailableWallets();
+
+      setAvailableWallets(wallets);
+
+      setSelectedWallet((currentValue) => {
+        if (currentValue && wallets.some((wallet) => wallet.key === currentValue)) {
+          return currentValue;
+        }
+
+        return wallets[0]?.key || "";
+      });
+    };
+
+    refreshWallets();
+    fetchLinkedWallet();
+
+    if (availableWallets.length === 0) {
+      refreshTimer = window.setTimeout(refreshWallets, 1000);
     }
 
-    fetchLinkedWallet();
+    window.addEventListener("focus", refreshWallets);
+    window.addEventListener("cardano#initialized", refreshWallets);
+
+    return () => {
+      if (refreshTimer) {
+        window.clearTimeout(refreshTimer);
+      }
+
+      window.removeEventListener("focus", refreshWallets);
+      window.removeEventListener("cardano#initialized", refreshWallets);
+    };
   }, []);
 
   const handleLinkWallet = async () => {

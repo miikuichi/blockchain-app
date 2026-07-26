@@ -4,18 +4,50 @@ function textToHex(text) {
     .join("");
 }
 
-export function getAvailableWallets() {
+function isWalletProvider(candidate) {
+  return Boolean(candidate && typeof candidate.enable === "function");
+}
+
+function collectWalletEntries() {
   if (!window.cardano) {
     return [];
   }
 
-  return Object.entries(window.cardano)
-    .filter(([, wallet]) => typeof wallet?.enable === "function")
-    .map(([key, wallet]) => ({
+  const entries = [];
+  const seen = new Set();
+
+  for (const key of Reflect.ownKeys(window.cardano)) {
+    if (typeof key !== "string") {
+      continue;
+    }
+
+    const wallet = window.cardano[key];
+
+    if (!isWalletProvider(wallet) || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    entries.push({
       key,
       name: wallet.name || key,
       icon: wallet.icon || null,
-    }));
+    });
+  }
+
+  if (isWalletProvider(window.cardano.lace) && !seen.has("lace")) {
+    entries.unshift({
+      key: "lace",
+      name: window.cardano.lace.name || "Lace",
+      icon: window.cardano.lace.icon || null,
+    });
+  }
+
+  return entries;
+}
+
+export function getAvailableWallets() {
+  return collectWalletEntries();
 }
 
 export async function connectWallet(walletKey) {

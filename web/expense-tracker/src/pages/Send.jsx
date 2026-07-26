@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Send, AlertCircle } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
- //import { adaToLovelace, sendAdaWithWallet } from "../services/cardanoTxService";
-import { connectWallet } from "../services/walletService";
+import { adaToLovelace } from "../services/cardanoTxService";
 
+const API_BASE = "http://localhost:5000/api";
 
 const EMPTY_FORM = { address: '', amount: '', memo: '' };
 
@@ -62,11 +62,6 @@ export default function SendPayment() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const {
-      adaToLovelace,
-      sendAdaWithWallet,
-    } = await import("../services/cardanoTxService");
-
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -87,23 +82,13 @@ export default function SendPayment() {
     setError("");
 
     try {
-      const txResult = await sendAdaWithWallet({
-        walletProvider: linkedWallet.walletProvider,
-        networkId: linkedWallet.networkId,
-        recipientAddress: form.address,
-        amountAda: form.amount,
-      });
-
-      const recordResponse = await fetch(`${API_BASE}/transactions`, {
+      const recordResponse = await fetch(`${API_BASE}/transactions/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          walletProvider: linkedWallet.walletProvider,
-          networkId: linkedWallet.networkId,
-          txHash: txResult.txHash,
           recipientAddress: form.address,
           amountLovelace: adaToLovelace(form.amount).toString(),
           memo: form.memo || null,
@@ -118,7 +103,7 @@ export default function SendPayment() {
         );
       }
 
-      setTxHash(recordData.transaction?.tx_hash || txResult.txHash);
+      setTxHash(recordData.transaction?.tx_hash || "");
       setSubmitted(true);
       setForm(EMPTY_FORM);
     } catch (submitError) {
@@ -142,8 +127,9 @@ export default function SendPayment() {
               <div className="success-icon">✓</div>
               <h3>Transaction Submitted</h3>
               <p>
-                Your transaction has been broadcast to the Cardano network and
-                is awaiting confirmation.
+                Your transfer request has been recorded by the backend.
+                Complete the final signing and broadcast from your wallet to
+                submit it on-chain.
               </p>
               {txHash && <p className="tx-hash">Tx Hash: {txHash}</p>}
               <Button
@@ -229,7 +215,7 @@ export default function SendPayment() {
                 className="btn-full"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Submitting..." : "Confirm &amp; Send"}
+                {isSubmitting ? "Creating Request..." : "Create Transfer Request"}
               </Button>
             </form>
           )}
@@ -240,14 +226,14 @@ export default function SendPayment() {
           <ul className="tips-list">
             <li>Always double-check the recipient address before sending.</li>
             <li>
-              ADA transactions on Cardano are irreversible once confirmed.
+              Transfer requests are saved first; finalize and broadcast using
+              your wallet.
             </li>
             <li>
               Keep your wallet on the same network as the app target network.
             </li>
             <li>
-              Transactions typically confirm within a few blocks after
-              submission.
+              On-chain confirmation starts only after wallet broadcast.
             </li>
           </ul>
         </Card>

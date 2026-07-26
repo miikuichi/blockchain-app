@@ -1,5 +1,79 @@
 import pool from "../config/db.js";
+import crypto from "node:crypto";
 import { reconcilePendingTransactions } from "../services/reconciliationService.js";
+
+export const sendTransactionAssisted = async (req, res) => {
+  try {
+    const { recipientAddress, amountLovelace, memo = null } = req.body;
+
+    if (!recipientAddress || amountLovelace === undefined || amountLovelace === null) {
+      return res.status(400).json({
+        success: false,
+        message: "Recipient address and amount are required.",
+      });
+    }
+
+    const linkedWalletResult = await pool.query(
+      `
+      SELECT wallet_provider, network_id
+      FROM user_wallets
+      WHERE user_id = $1
+      `,
+      [req.user.id]
+    );
+
+    if (linkedWalletResult.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No linked wallet found for this account.",
+      });
+    }
+
+    const linkedWallet = linkedWalletResult.rows[0];
+    const amountValue = BigInt(amountLovelace);
+    const syntheticTxHash = `assist_${crypto.randomUUID().replace(/-/g, "")}`;
+
+    const result = await pool.query(
+      `
+      INSERT INTO cardano_transactions (
+        user_id,
+        wallet_provider,
+        network_id,
+        tx_hash,
+        recipient_address,
+        amount_lovelace,
+        fee_lovelace,
+        memo,
+        status
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'requested')
+      RETURNING tx_hash, recipient_address, amount_lovelace, fee_lovelace, memo, status, submitted_at
+      `,
+      [
+        req.user.id,
+        linkedWallet.wallet_provider,
+        linkedWallet.network_id,
+        syntheticTxHash,
+        recipientAddress,
+        amountValue.toString(),
+        null,
+        memo,
+      ]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Transfer request recorded through backend-assisted flow.",
+      transaction: result.rows[0],
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create backend-assisted transfer request.",
+    });
+  }
+};
 
 export const recordTransaction = async (req, res) => {
   try {
